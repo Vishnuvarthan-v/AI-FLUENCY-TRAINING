@@ -1,0 +1,150 @@
+Your task_agent.py is the main Python file for an Agentic RAG Helpdesk.
+- RAG — AI searches your college handbook and uses the retrieved information to answer questions.
+- Agent — AI decides which tool to call to answer a question.
+- LangGraph — Controls the agent's workflow, including tool calls and repeated reasoning steps.
+- Memory — Allows the conversation to retain earlier messages within the same conversation thread.
+1. Run task_agent.py
+Python starts executing the file
+
+2. Ask the AI a question
+Example: What is the late fee?
+
+3. AI decides which tool is needed
+Handbook search, fee lookup, calculator, etc.
+
+4. Tool executes and returns a result
+Python runs the tool and returns its output
+
+5. AI generates the final answer
+LangGraph may repeat the tool step if needed
+
+
+2. Understand the code section by section
+Section A — Imports
+Your file begins with imports similar to these:
+import astimport operatorfrom langchain_core.tools import toolfrom langgraph.checkpoint.memory import InMemorySaverfrom langgraph.graph import START, MessagesState, StateGraphfrom langgraph.prebuilt import ToolNode, tools_conditionfrom lc_config import get_model, get_vectorstore
+
+
+
+What each one does:
+Code	Purpose
+ast	Helps safely interpret arithmetic expressions
+operator	Provides arithmetic operations such as addition and multiplication
+tool	Marks Python functions as tools the AI can call
+InMemorySaver	Saves conversation checkpoints in RAM
+START	Represents the beginning of the graph
+MessagesState	Holds conversation messages
+StateGraph	Builds the agent's workflow
+ToolNode	Executes requested tools
+tools_condition	Decides whether to execute tools or finish
+get_model()	Loads your configured language model
+get_vectorstore()	Loads the handbook's vector store for searching
+Important: task_agent.py contains the agent workflow, while lc_config.py provides the model and vector-store configuration.
+Section B — Course fee data
+Your code contains a dictionary like this:
+COURSE_FEES = {    "CS101": 12000,    "AI202": 18000,    "DS303": 15000}
+
+
+
+This stores course codes and their fees.
+For example:
+- CS101 → ₹12,000
+- AI202 → ₹18,000
+- DS303 → ₹15,000
+When the AI needs a known course fee, it can call get_course_fee() instead of guessing the amount.
+Section C — Load the handbook vector store
+store = get_vectorstore()
+
+
+
+This loads the vector store configured in lc_config.py.
+A vector store makes it possible to search for handbook passages based on the meaning of a question, rather than only matching exact words.
+For example, a student asks:
+"How much should I pay if I submit my fees late?"
+
+The handbook might contain the words "late fee" rather than the exact wording in the student's question. Semantic search can help retrieve the relevant passage.
+Section D — Define the tools
+Your agent has four main tools.
+
+1. search_handbook(query)
+Searches the handbook for relevant passages.
+Example question: "What time should hostel students return?"
+Expected source: hostel_rules.md.
+
+
+
+
+2. get_course_fee(course_code)
+Looks up a course fee from the dictionary.
+Example: get_course_fee("AI202") returns 18000.
+
+
+
+
+3. check_exam_eligibility(attendance_percent)
+Applies your programmed attendance rules.
+- 75% or higher → ELIGIBLE
+- 65% to below 75% → CONDONATION, ₹500 per course
+- Below 65% → NOT ELIGIBLE
+- Outside 0–100% → ERROR
+These are the sample rules implemented in your project, not verified official college regulations.
+
+
+
+
+4. calculator(expression)
+Evaluates supported arithmetic expressions.
+Example: 18000 + 15000 returns 33000.
+
+
+
+The @tool decorator makes an eligible Python function available to the language model as a tool. The model can request a tool call, but Python executes the function and returns the result.
+Section E — Give the model its instructions
+Your system prompt tells the model how it should behave, such as:
+- Use the appropriate tool when required.
+- Use handbook passages for college-related questions.
+- Mention the source file when giving handbook answers.
+The system prompt guides the model, but it does not guarantee that the model will always follow every rule.
+This matters because your latest test showed that the AI answered a question about France even though that information was outside the college handbook.
+Section F — Build the LangGraph workflow
+Your code uses components like these:
+builder = StateGraph(MessagesState)builder.add_node("agent", ...)builder.add_node("tools", ToolNode(tools))builder.add_edge(START, "agent")builder.add_conditional_edges("agent", tools_condition)builder.add_edge("tools", "agent")
+
+
+
+Conceptually, the graph works like this:
+#chatgpt-mermaid-_r_11d_{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;fill:rgb(255, 255, 255);}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#chatgpt-mermaid-_r_11d_ .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#chatgpt-mermaid-_r_11d_ .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#chatgpt-mermaid-_r_11d_ .error-icon{fill:rgba(255, 255, 255, 0.03);}#chatgpt-mermaid-_r_11d_ .error-text{fill:rgb(255, 255, 255);stroke:rgb(255, 255, 255);}#chatgpt-mermaid-_r_11d_ .edge-thickness-normal{stroke-width:1px;}#chatgpt-mermaid-_r_11d_ .edge-thickness-thick{stroke-width:3.5px;}#chatgpt-mermaid-_r_11d_ .edge-pattern-solid{stroke-dasharray:0;}#chatgpt-mermaid-_r_11d_ .edge-thickness-invisible{stroke-width:0;fill:none;}#chatgpt-mermaid-_r_11d_ .edge-pattern-dashed{stroke-dasharray:3;}#chatgpt-mermaid-_r_11d_ .edge-pattern-dotted{stroke-dasharray:2;}#chatgpt-mermaid-_r_11d_ .marker{fill:rgba(255, 255, 255, 0.498);stroke:rgba(255, 255, 255, 0.498);}#chatgpt-mermaid-_r_11d_ .marker.cross{stroke:rgba(255, 255, 255, 0.498);}#chatgpt-mermaid-_r_11d_ svg{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;}#chatgpt-mermaid-_r_11d_ p{margin:0;}#chatgpt-mermaid-_r_11d_ .label{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:rgb(255, 255, 255);}#chatgpt-mermaid-_r_11d_ .cluster-label text{fill:rgb(255, 255, 255);}#chatgpt-mermaid-_r_11d_ .cluster-label span{color:rgb(255, 255, 255);}#chatgpt-mermaid-_r_11d_ .cluster-label span p{background-color:transparent;}#chatgpt-mermaid-_r_11d_ .label text,#chatgpt-mermaid-_r_11d_ span{fill:rgb(255, 255, 255);color:rgb(255, 255, 255);}#chatgpt-mermaid-_r_11d_ .node rect,#chatgpt-mermaid-_r_11d_ .node circle,#chatgpt-mermaid-_r_11d_ .node ellipse,#chatgpt-mermaid-_r_11d_ .node polygon,#chatgpt-mermaid-_r_11d_ .node path{fill:rgb(26, 40, 61);stroke:rgb(31, 78, 148);stroke-width:1px;}#chatgpt-mermaid-_r_11d_ .rough-node .label text,#chatgpt-mermaid-_r_11d_ .node .label text,#chatgpt-mermaid-_r_11d_ .image-shape .label,#chatgpt-mermaid-_r_11d_ .icon-shape .label{text-anchor:middle;}#chatgpt-mermaid-_r_11d_ .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#chatgpt-mermaid-_r_11d_ .rough-node .label,#chatgpt-mermaid-_r_11d_ .node .label,#chatgpt-mermaid-_r_11d_ .image-shape .label,#chatgpt-mermaid-_r_11d_ .icon-shape .label{text-align:center;}#chatgpt-mermaid-_r_11d_ .node.clickable{cursor:pointer;}#chatgpt-mermaid-_r_11d_ .root .anchor path{fill:rgba(255, 255, 255, 0.498)!important;stroke-width:0;stroke:rgba(255, 255, 255, 0.498);}#chatgpt-mermaid-_r_11d_ .arrowheadPath{fill:rgba(255, 255, 255, 0.498);}#chatgpt-mermaid-_r_11d_ .edgePath .path{stroke:rgba(255, 255, 255, 0.498);stroke-width:1px;}#chatgpt-mermaid-_r_11d_ .flowchart-link{stroke:rgba(255, 255, 255, 0.498);fill:none;}#chatgpt-mermaid-_r_11d_ .edgeLabel{background-color:rgb(24, 24, 24);text-align:center;}#chatgpt-mermaid-_r_11d_ .edgeLabel p{background-color:rgb(24, 24, 24);}#chatgpt-mermaid-_r_11d_ .edgeLabel rect{opacity:0.5;background-color:rgb(24, 24, 24);fill:rgb(24, 24, 24);}#chatgpt-mermaid-_r_11d_ .labelBkg{background-color:rgba(24, 24, 24, 0.5);}#chatgpt-mermaid-_r_11d_ .cluster rect{fill:rgba(255, 255, 255, 0.03);stroke:rgba(255, 255, 255, 0.082);stroke-width:1px;}#chatgpt-mermaid-_r_11d_ .cluster text{fill:rgb(255, 255, 255);}#chatgpt-mermaid-_r_11d_ .cluster span{color:rgb(255, 255, 255);}#chatgpt-mermaid-_r_11d_ div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:12px;background:rgba(255, 255, 255, 0.03);border:1px solid rgba(255, 255, 255, 0.082);border-radius:2px;pointer-events:none;z-index:100;}#chatgpt-mermaid-_r_11d_ .flowchartTitleText{text-anchor:middle;font-size:18px;fill:rgb(255, 255, 255);}#chatgpt-mermaid-_r_11d_ rect.text{fill:none;stroke-width:0;}#chatgpt-mermaid-_r_11d_ .icon-shape,#chatgpt-mermaid-_r_11d_ .image-shape{background-color:rgb(24, 24, 24);text-align:center;}#chatgpt-mermaid-_r_11d_ .icon-shape p,#chatgpt-mermaid-_r_11d_ .image-shape p{background-color:rgb(24, 24, 24);padding:2px;}#chatgpt-mermaid-_r_11d_ .icon-shape .label rect,#chatgpt-mermaid-_r_11d_ .image-shape .label rect{opacity:0.5;background-color:rgb(24, 24, 24);fill:rgb(24, 24, 24);}#chatgpt-mermaid-_r_11d_ .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#chatgpt-mermaid-_r_11d_ .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#chatgpt-mermaid-_r_11d_ .node .neo-node{stroke:rgb(31, 78, 148);}#chatgpt-mermaid-_r_11d_ [data-look="neo"].node rect,#chatgpt-mermaid-_r_11d_ [data-look="neo"].cluster rect,#chatgpt-mermaid-_r_11d_ [data-look="neo"].node polygon{stroke:url(#chatgpt-mermaid-_r_11d_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-_r_11d_ [data-look="neo"].swimlane.cluster rect{filter:none;}#chatgpt-mermaid-_r_11d_ [data-look="neo"].node path{stroke:url(#chatgpt-mermaid-_r_11d_-gradient);stroke-width:1px;}#chatgpt-mermaid-_r_11d_ [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-_r_11d_ [data-look="neo"].node .neo-line path{stroke:rgb(31, 78, 148);filter:none;}#chatgpt-mermaid-_r_11d_ [data-look="neo"].node circle{stroke:url(#chatgpt-mermaid-_r_11d_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-_r_11d_ [data-look="neo"].node circle .state-start{fill:#000000;}#chatgpt-mermaid-_r_11d_ [data-look="neo"].icon-shape .icon{fill:url(#chatgpt-mermaid-_r_11d_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-_r_11d_ [data-look="neo"].icon-shape .icon-neo path{stroke:url(#chatgpt-mermaid-_r_11d_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-_r_11d_ .node text{font-size:14px;font-weight:600;letter-spacing:normal;fill:rgb(153, 206, 255);}#chatgpt-mermaid-_r_11d_ .edgeLabels text{font-size:13px;font-weight:600;letter-spacing:-0.08px;fill:rgb(153, 206, 255);}#chatgpt-mermaid-_r_11d_ .node tspan[font-weight="normal"],#chatgpt-mermaid-_r_11d_ .edgeLabels tspan[font-weight="normal"]{font-weight:600;}#chatgpt-mermaid-_r_11d_ .edgeLabel .label rect{opacity:1;rx:13px;ry:13px;fill:rgb(0, 14, 26);stroke:rgb(26, 62, 95);stroke-width:1px;}#chatgpt-mermaid-_r_11d_ .node rect,#chatgpt-mermaid-_r_11d_ .node circle,#chatgpt-mermaid-_r_11d_ .node ellipse,#chatgpt-mermaid-_r_11d_ .node polygon,#chatgpt-mermaid-_r_11d_ .node path{fill:rgb(0, 40, 77);stroke:rgba(255, 255, 255, 0.1);stroke-width:1px;}#chatgpt-mermaid-_r_11d_ .node rect{rx:16px;ry:16px;}#chatgpt-mermaid-_r_11d_ .node.mermaid-decision .label-container{fill:rgb(0, 14, 26);stroke:rgb(26, 62, 95);stroke-dasharray:2,2;}#chatgpt-mermaid-_r_11d_ .edgePaths .flowchart-link{stroke:rgba(255, 255, 255, 0.498);stroke-width:1px;stroke-linecap:round;stroke-linejoin:round;}#chatgpt-mermaid-_r_11d_ .marker{fill:rgba(255, 255, 255, 0.498);stroke:rgba(255, 255, 255, 0.498);}#chatgpt-mermaid-_r_11d_ :root{--mermaid-font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}STARTAgent receives messagesTool requested?Execute toolENDYesNo
+
+
+
+
+
+The key part is this loop:
+Agent → Tool → Agent
+Suppose you ask for the combined fee of two courses.
+1. The agent decides which course-fee tools to call.
+2. The tools return the individual fees.
+3. The agent may call the calculator to add them.
+4. The agent uses the returned results to formulate the answer.
+5. If it requests no more tools, the graph ends.
+This is why an agent is different from a simple chatbot that only generates text.
+Section G — Compile the graph and enable memory
+Your code uses InMemorySaver() as a checkpoint saver when compiling the graph. It then calls the graph using a thread_id.
+A simplified example:
+checkpointer = InMemorySaver()graph = builder.compile(checkpointer=checkpointer)
+
+
+
+Your actual graph and function names may vary slightly, but the important concept is the same.
+The thread ID identifies a conversation:
+ask(question, "task-run")
+
+
+
+If you use "task-run" for multiple questions, the graph can use that thread's saved messages as conversation context.
+For example:
+- Question 1: "What is the late fee?"
+- Question 2: "And what is the maximum?"
+The second question can refer to the late-fee answer from the first question.
+But if you use "student-1" and "student-2" as separate thread IDs, their conversation histories remain separate.
+Memory limitation: InMemorySaver keeps checkpoints in RAM. Do not assume the conversation will survive restarting the Python process.
